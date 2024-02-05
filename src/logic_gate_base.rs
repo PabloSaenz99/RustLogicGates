@@ -1,6 +1,7 @@
 use crate::gates::GateTypes;
-use std::boxed::Box;
+use std::cell::RefCell;
 use std::option::Option;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct LogicGate {
@@ -9,9 +10,9 @@ pub struct LogicGate {
 	right_input: bool,
 	// output: bool,
 
-	left_input_connection: Option<Box<LogicGate>>,
-	right_input_connection: Option<Box<LogicGate>>,
-	output_connection: Vec<LogicGate>,
+	left_input_connection: Option<Rc<RefCell<LogicGate>>>,
+	right_input_connection: Option<Rc<RefCell<LogicGate>>>,
+	output_connection: Vec<Option<Rc<RefCell<LogicGate>>>>,
 }
 
 impl LogicGate {
@@ -34,7 +35,9 @@ impl LogicGate {
 		return l;
 	}
 
-	pub fn with(_type: GateTypes, left_input_connection: Option<Box<LogicGate>>, right_input_connection: Option<Box<LogicGate>>) -> LogicGate {
+	pub fn with(_type: GateTypes,
+			left_input_connection: Option<Rc<RefCell<LogicGate>>>,
+			right_input_connection: Option<Rc<RefCell<LogicGate>>>) -> LogicGate {
 		let mut l = LogicGate {
 			_type, left_input: false, right_input: false,
 			left_input_connection,
@@ -61,7 +64,7 @@ impl LogicGate {
 		match &self.left_input_connection {
 			Some(a) => {
 				println!("Error, input setted, using its value");
-				self.left_input = a.get_output();
+				self.left_input = a.borrow().get_output();
 			}
 			None => self.left_input = new_input
 		}
@@ -70,26 +73,26 @@ impl LogicGate {
 		match &self.right_input_connection {
 			Some(a) => {
 				println!("Error, input setted, using its value");
-				self.right_input = a.get_output();
+				self.right_input = a.borrow().get_output();
 			}
 			None => self.right_input = new_input
 		}
 	}
 
-	pub fn get_left_input_connection(&self) -> &Option<Box<LogicGate>> { &self.left_input_connection }
-	pub fn get_right_input_connection(&self) -> &Option<Box<LogicGate>> { &self.right_input_connection }
-	pub fn get_output_connection(&self) -> &Vec<LogicGate> { &self.output_connection }
+	pub fn get_left_input_connection(&self) -> &Option<Rc<RefCell<LogicGate>>> { &self.left_input_connection }
+	pub fn get_right_input_connection(&self) -> &Option<Rc<RefCell<LogicGate>>> { &self.right_input_connection }
+	pub fn get_output_connection(&self) -> &Vec<Option<Rc<RefCell<LogicGate>>>> { &self.output_connection }
 
-	pub fn  set_left_input_connection<'a>(&mut self, new_input: Option<Box<LogicGate>>) {
+	pub fn  set_left_input_connection<'a>(&mut self, new_input: Option<Rc<RefCell<LogicGate>>>) {
 		self.left_input_connection = new_input;
 		self.set_left_input(self.left_input);
 	}
-	pub fn set_right_input_connection(&mut self, new_input: Option<Box<LogicGate>>) {
+	pub fn set_right_input_connection(&mut self, new_input: Option<Rc<RefCell<LogicGate>>>) {
 		self.right_input_connection = new_input;
 		self.set_right_input(self.right_input);
 	}
-	pub fn set_output_connection(&mut self, new_output: Vec<LogicGate>) { self.output_connection = new_output; }
-	pub fn add_output_connection(&mut self, new_output: LogicGate) { self.output_connection.push(new_output); }
+	pub fn set_output_connection(&mut self, new_output: Vec<Option<Rc<RefCell<LogicGate>>>>) { self.output_connection = new_output; }
+	pub fn add_output_connection(&mut self, new_output: Option<Rc<RefCell<LogicGate>>>) { self.output_connection.push(new_output); }
 
 	pub fn calculate_output(&self) -> bool {
 		return match self.get_type() {
