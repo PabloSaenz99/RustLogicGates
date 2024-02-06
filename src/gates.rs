@@ -11,18 +11,13 @@ impl GateTypes {
 	}
 }
 
-/* pub fn print_gate(gate: &LogicGate) {
-	println!("{}", gate.get_string()[0]);
-	println!("{}", gate.get_string()[1]);
-	println!("{}", gate.get_string()[2]);
-} */
-
-
-/* pub fn calculate_output(gate: &mut LogicGate) -> bool {
-	match gate.get_type() {
-		GATES::AND => gate.set_output(gate.get_left_input() && gate.get_right_input()),
-		GATES::OR => gate.set_output(gate.get_left_input() || gate.get_right_input()),
-		GATES::IN => gate.set_output(gate.get_left_input())
+impl From<String> for GateTypes {
+    fn from(value: String) -> Self {
+		match value.as_str() {
+			"AND" => GateTypes::AND,
+			"OR" => GateTypes::OR,
+			"NOT" => GateTypes::NOT,
+			_ => panic!("gate type {} does not exists!", value)
+		}
 	}
-	return gate.get_output();
-} */
+}

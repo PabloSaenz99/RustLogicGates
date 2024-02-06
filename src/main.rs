@@ -1,6 +1,6 @@
 use controller::Controller;
 
-use crate::{gates::GateTypes, input_utils::{read_options, show_options}};
+use crate::{gates::GateTypes, input_utils::show_options};
 
 mod logic_gate_base;
 pub mod gates;
@@ -12,11 +12,12 @@ fn main() {
 	ctrl.borrow_mut().add_new_gate(GateTypes::AND);
 	ctrl.borrow_mut().add_new_gate(GateTypes::OR);
 	ctrl.borrow_mut().add_new_gate(GateTypes::OR);
-	ctrl.borrow().print_all();
 
 	println!("-----------");
 	ctrl.borrow().print_tree();
 
-	show_options();
-	read_options();
+	loop {
+		show_options();
+		ctrl.borrow_mut().parse_options();
+	}
 }

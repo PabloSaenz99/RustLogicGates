@@ -1,4 +1,4 @@
-use crate::{gates::GateTypes, logic_gate_base::LogicGate};
+use crate::{gates::GateTypes, input_utils::{error_option, read_terminal, InputOptions}, logic_gate_base::LogicGate};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Controller {
@@ -42,7 +42,7 @@ impl Controller {
 		}
 	}
 
-	pub fn get_gate(self, i: u128) -> Option<Rc<RefCell<LogicGate>>> {
+	pub fn get_gate(&self, i: u128) -> Option<Rc<RefCell<LogicGate>>> {
 		self.all_gates.get(&i).cloned()
 	}
 
@@ -58,6 +58,17 @@ impl Controller {
 	pub fn execute(&self) {
 		for i in &self.outputs {
 			i.clone().borrow().calculate_output();
+		}
+	}
+
+	pub fn print_gate(&self, gate: Option<Rc<RefCell<LogicGate>>>) {
+		match gate {
+			Some(g) => {
+				for s in g.borrow().get_string() {
+					println!("|{:^19}|", s);
+				}
+			}
+			None => println!("Gate not found!"),
 		}
 	}
 
@@ -97,32 +108,44 @@ impl Controller {
 			}
 			current_gate.calculate_output();
 			// vertical[height].insert(gate, current_gate.get_string());
-			vertical[height].insert(gate.borrow().get_id(), current_gate.get_full_string());
+			vertical[height].insert(gate.borrow().get_id(), current_gate.get_string());
 		}
 	}
 
-	pub fn print_all(&self) {
-		let mut inputs = Vec::<[String; 3]>::with_capacity(self.all_gates.len());
-		for g in &self.all_gates {
-			inputs.push( g.1.borrow().get_string());
-		}
-
-		println!("Nº gates: {}", self.all_gates.len());
-		println!("Nº inputs: {}", self.inputs.len());
-		println!("Nº outputs: {}", self.outputs.len());
-		println!();
-
-		for j in 0..3 {
-			for i in 0..inputs.len() {
-				if j == 0 {
-					print!("[{:^11}]", inputs[i][j]);
-				} else if j == 1 {
-					print!("|{:^11}|", format!("{} - {:?}", i, inputs[i][j]));
-				} else{
-					print!("[{:^11}]", inputs[i][j]);
+	pub fn parse_options(&mut self) {
+		let input = read_terminal().trim().to_string();
+		match InputOptions::from(input.clone()) {
+			InputOptions::Exit => std::process::exit(0),
+			InputOptions::New(_type) => self.add_new_gate(_type),
+			InputOptions::Show(opt) =>
+				match opt.as_str() {
+					"all" => self.print_tree(),
+					_=> self.print_gate(self.get_gate(opt.parse().unwrap_or(0))),
 				}
-			}
-			println!();
-		}
+			InputOptions::Link(opt, input_gate, output_gate) =>
+				match (self.get_gate(input_gate), self.get_gate(output_gate)) {
+					(None, None) => error_option(String::from("Input and output not valid!"), self),
+					(None, Some(_)) => error_option(input_gate.to_string(), self),
+					(Some(_), None) => error_option(output_gate.to_string(), self),
+					(Some(i), Some(o)) =>
+						match opt.as_str() {
+							"left" => self.join_to_left_gate(i, o),
+							"right" => self.join_to_right_gate(i, o),
+							_=> error_option(opt, self)
+						},
+				},
+			InputOptions::Input(id, mode, value) =>
+				match self.get_gate(id) {
+					Some(gate) =>
+						match mode.as_str() {
+							"left" => gate.borrow_mut().set_left_input(value),
+							"right" => gate.borrow_mut().set_right_input(value),
+							_ => error_option(String::from("must be left or right"), self)
+						}
+					None => error_option("id".to_string(), self),
+				},
+			InputOptions::Error => error_option(input, self),
+		};
+		println!();
 	}
 }

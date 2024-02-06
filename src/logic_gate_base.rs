@@ -54,22 +54,16 @@ impl LogicGate {
 	pub fn get_right_input(&self) -> bool { self.right_input }
 	pub fn get_output(&self) -> bool { self.calculate_output() }
 
-	pub fn get_string(&self) -> [String; 3] {
-		[self.get_output().to_string(),
-		self.get_type().to_string(),
-		self.get_left_input().to_string() + "-" + &self.get_right_input().to_string()]
-	}
-
-	pub fn get_full_string(&self) -> [String; 5] {
+	pub fn get_string(&self) -> [String; 5] {
 		[self.get_output().to_string(),
 		self.get_type().to_string(),
 		self.get_id().to_string(),
 		self.get_left_input().to_string() + "-" + &self.get_right_input().to_string(),
-		self.get_option_string(self.get_left_input_connection().clone()) + "-" +
-			&self.get_option_string(self.get_right_input_connection().clone())]
+		format!("{:.8}-{:.8}", self.get_id_string(self.get_left_input_connection().clone()),
+			&self.get_id_string(self.get_right_input_connection().clone()))]
 	}
 
-	fn get_option_string(&self, opt: Option<Rc<RefCell<LogicGate>>>) -> String{
+	fn get_id_string(&self, opt: Option<Rc<RefCell<LogicGate>>>) -> String{
 		match opt {
 			Some(o) => o.borrow().get_id().to_string(),
 			None => "None".to_string()
