@@ -1,10 +1,11 @@
 use controller::Controller;
 
-use crate::gates::GateTypes;
+use crate::{gates::GateTypes, input_utils::{read_options, show_options}};
 
 mod logic_gate_base;
 pub mod gates;
 pub mod controller;
+mod input_utils;
 
 fn main() {
 	let ctrl = Controller::new();
@@ -15,4 +16,7 @@ fn main() {
 
 	println!("-----------");
 	ctrl.borrow().print_tree();
+
+	show_options();
+	read_options();
 }
