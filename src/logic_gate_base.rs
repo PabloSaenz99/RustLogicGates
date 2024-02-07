@@ -1,5 +1,6 @@
 use crate::gates::GateTypes;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::option::Option;
 use std::rc::Rc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -15,7 +16,7 @@ pub struct LogicGate {
 
 	left_input_connection: Option<Rc<RefCell<LogicGate>>>,
 	right_input_connection: Option<Rc<RefCell<LogicGate>>>,
-	output_connection: Vec<Option<Rc<RefCell<LogicGate>>>>,
+	output_connection: HashMap<u128, Option<Rc<RefCell<LogicGate>>>>,
 }
 
 impl LogicGate {
@@ -40,7 +41,7 @@ impl LogicGate {
 		let mut l = LogicGate {
 			_type, id: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos(),
 			left_input, right_input,
-			left_input_connection, right_input_connection, output_connection: Vec::new()
+			left_input_connection, right_input_connection, output_connection: HashMap::with_capacity(1)
 		};
 		l.set_left_input(l.get_left_input());
 		l.set_right_input(l.get_right_input());
@@ -91,7 +92,7 @@ impl LogicGate {
 
 	pub fn get_left_input_connection(&self) -> &Option<Rc<RefCell<LogicGate>>> { &self.left_input_connection }
 	pub fn get_right_input_connection(&self) -> &Option<Rc<RefCell<LogicGate>>> { &self.right_input_connection }
-	pub fn get_output_connection(&self) -> &Vec<Option<Rc<RefCell<LogicGate>>>> { &self.output_connection }
+	pub fn get_output_connection(&self) -> &HashMap<u128, Option<Rc<RefCell<LogicGate>>>> { &self.output_connection }
 
 	pub fn  set_left_input_connection<'a>(&mut self, new_input: Option<Rc<RefCell<LogicGate>>>) {
 		self.left_input_connection = new_input;
@@ -101,8 +102,13 @@ impl LogicGate {
 		self.right_input_connection = new_input;
 		self.set_right_input(self.right_input);
 	}
-	pub fn set_output_connection(&mut self, new_output: Vec<Option<Rc<RefCell<LogicGate>>>>) { self.output_connection = new_output; }
-	pub fn add_output_connection(&mut self, new_output: Option<Rc<RefCell<LogicGate>>>) { self.output_connection.push(new_output); }
+	pub fn set_output_connection(&mut self, new_output: HashMap<u128, Option<Rc<RefCell<LogicGate>>>>) { self.output_connection = new_output; }
+	pub fn add_output_connection(&mut self, id: u128, new_output: Option<Rc<RefCell<LogicGate>>>) { self.output_connection.insert(id, new_output); }
+	pub fn remove_output_connection(&mut self, to_remove: &Option<Rc<RefCell<LogicGate>>>) {
+		if to_remove.is_some() {
+			self.output_connection.remove(&to_remove.clone().unwrap().borrow().get_id());
+		}
+	}
 
 	pub fn calculate_output(&self) -> bool {
 		return match self.get_type() {

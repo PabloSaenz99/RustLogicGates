@@ -12,20 +12,7 @@ pub fn read_terminal() -> String {
 }
 
 pub enum InputOptions {
-    Exit, New(GateTypes), Show(String), Link(String, u128, u128), Input(u128, String, bool), Error
-}
-
-impl InputOptions {
-    pub fn to_string(&self) -> String {
-        match self {
-            InputOptions::Exit => String::from("Exit"),
-            InputOptions::New(_) => String::from("New"),
-            InputOptions::Show(_) => String::from("Show"),
-            InputOptions::Link(_, _, _) => String::from("Link"),
-            InputOptions::Input(_, _, _) => String::from("Input"),
-            InputOptions::Error => String::from("Error"),
-        }
-    }
+    Exit, New(GateTypes), Show(String), Link(String, u128, u128), Unlink(String, u128, u128), Input(u128, String, bool), Error
 }
 
 impl From<String> for InputOptions {
@@ -58,6 +45,21 @@ impl From<String> for InputOptions {
                     return InputOptions::Link(opts[0].clone(), opts[1].clone().parse().unwrap_or(0), opts[2].clone().parse().unwrap_or(0))
                 }
             },
+			Some("Unlink") => {
+                let mut opts = Vec::with_capacity(2);
+                while let Some(opt)= res.next() {
+                    opts.push(opt.to_string());
+                }
+                if opts.len() < 2 || opts.len() > 3 {
+                    return InputOptions::Error
+                }
+                else {
+                    if opts.len() == 2 {
+                        opts.push("0".to_string())
+                    }
+                    return InputOptions::Unlink(opts[0].clone(), opts[1].clone().parse().unwrap_or(0), opts[2].clone().parse().unwrap_or(0))
+                }
+            },
             Some("Input") => {
                 let mut opts = Vec::with_capacity(3);
                 while let Some(opt)= res.next() {
@@ -83,10 +85,11 @@ pub fn error_option(input: String, ctrl: &mut Controller) {
 }
 
 pub fn show_options() {
-	println!("Choose an option: ");
-    println!("{}", InputOptions::Exit.to_string());
-    println!("{} <gate_type>", InputOptions::New(GateTypes::AND).to_string());
-    println!("{} <gate_id || all>", InputOptions::Show(String::new()).to_string());
-    println!("{} <left || right> <input> <output>", InputOptions::Link(String::new(), 0, 0).to_string());
-    println!("{} <gate_id> <left || right>, <bool>", InputOptions::Input(0, String::new(), false).to_string())
+	println!("Choose an option:");
+    println!("Exit");
+    println!("New <gate_type>");
+    println!("Show <gate_id || all>");
+    println!("Link <left || right> <from> <to>");
+    println!("Unlink <left || right || none> <from> <to | none>");
+    println!("Input <gate_id> <left || right>, <bool>");
 }

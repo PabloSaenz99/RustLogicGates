@@ -2,14 +2,14 @@ use crate::{gates::GateTypes, input_utils::{error_option, read_terminal, InputOp
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Controller {
-	outputs: Vec<Rc<RefCell<LogicGate>>>,
-	inputs: Vec<Rc<RefCell<LogicGate>>>,
+	outputs: HashMap<u128, Rc<RefCell<LogicGate>>>,
+	inputs: HashMap<u128, Rc<RefCell<LogicGate>>>,
 	all_gates: HashMap<u128, Rc<RefCell<LogicGate>>>
 }
 
 impl Controller {
 	pub fn new() -> RefCell<Controller>{
-		RefCell::new(Controller{ outputs: vec![], inputs: vec![], all_gates: HashMap::new() })
+		RefCell::new(Controller{ outputs: HashMap::new(), inputs: HashMap::new(), all_gates: HashMap::new() })
 	}
 
 	pub fn add_new_gate(&mut self, _type: GateTypes) {
@@ -28,15 +28,15 @@ impl Controller {
   		let r = binding.get_right_input_connection();
 		match (l, r) {
     		(Some(_), Some(_)) => {},
-			_ => self.inputs.push(ref_gate.clone()),
-		}
-		if ref_gate.clone().borrow().get_output_connection().len() == 0 {
-			self.outputs.push(ref_gate.clone());
+			_ => {self.inputs.insert(ref_gate.borrow().get_id(), ref_gate.clone());},
+		};
+		if ref_gate.borrow().get_output_connection().len() == 0 {
+			self.outputs.insert(ref_gate.borrow().get_id(), ref_gate.clone());
 		}
 		else {
-			for o in ref_gate.clone().borrow().get_output_connection() {
+			for o in ref_gate.clone().borrow().get_output_connection().values() {
 				if let None = o {	//If is there is a None, add this to outputs
-					self.outputs.push(ref_gate.clone());
+					self.outputs.insert(ref_gate.borrow().get_id(), ref_gate.clone());
 				}
 			}
 		}
@@ -47,16 +47,39 @@ impl Controller {
 	}
 
 	pub fn join_to_left_gate(&mut self, left: Rc<RefCell<LogicGate>>, to: Rc<RefCell<LogicGate>>) {
-		to/* .clone() */.borrow_mut().set_left_input_connection(Some(left.clone()));
-		left.borrow_mut().add_output_connection(Some(to.clone()));
+		to.borrow_mut().set_left_input_connection(Some(left.clone()));
+		left.borrow_mut().add_output_connection(to.clone().borrow().get_id(), Some(to.clone()));
 	}
 	pub fn join_to_right_gate(&mut self, right: Rc<RefCell<LogicGate>>, to: Rc<RefCell<LogicGate>>) {
 		to.borrow_mut().set_left_input_connection(Some(right.clone()));
-		right.borrow_mut().add_output_connection(Some(to.clone()));
+		right.borrow_mut().add_output_connection(to.clone().borrow().get_id(),Some(to.clone()));
+	}
+
+	pub fn remove_from_gate_to_left(&mut self, from: Rc<RefCell<LogicGate>>, to: Option<Rc<RefCell<LogicGate>>>) {
+		from.borrow_mut().remove_output_connection(&to);
+		if to.is_some() {
+			let t = to.clone().unwrap();
+			t.borrow_mut().set_left_input_connection(None);
+			//If there are no connections, add to inputs
+			if t.borrow().get_right_input_connection().is_none() {
+				self.inputs.insert(t.borrow().get_id(), t.clone());
+			}
+		}
+	}
+	pub fn remove_from_gate_to_right(&mut self, from: Rc<RefCell<LogicGate>>, to: Option<Rc<RefCell<LogicGate>>>) {
+		from.borrow_mut().remove_output_connection(&to);
+		if to.is_some() {
+			let t = to.clone().unwrap();
+			t.borrow_mut().set_right_input_connection(None);
+			//If there are no connections, add to inputs
+			if t.borrow().get_left_input_connection().is_none() {
+				self.inputs.insert(t.borrow().get_id(), t.clone());
+			}
+		}
 	}
 
 	pub fn execute(&self) {
-		for i in &self.outputs {
+		for i in self.outputs.values() {
 			i.clone().borrow().calculate_output();
 		}
 	}
@@ -74,7 +97,7 @@ impl Controller {
 
 	pub fn print_tree(&self) {
 		let mut vertical = Vec::new();
-		for o in &self.outputs {
+		for o in self.outputs.values() {
 			self.print_recursive(o.clone(), &mut vertical, 0)
 		}
 
@@ -107,7 +130,6 @@ impl Controller {
 				}
 			}
 			current_gate.calculate_output();
-			// vertical[height].insert(gate, current_gate.get_string());
 			vertical[height].insert(gate.borrow().get_id(), current_gate.get_string());
 		}
 	}
@@ -134,6 +156,21 @@ impl Controller {
 							_=> error_option(opt, self)
 						},
 				},
+			InputOptions::Unlink(position, from, to) =>
+				match (self.get_gate(from), self.get_gate(to)) {
+					(None, None) => error_option(String::from("There must be an input"), self),
+					(None, Some(_)) => error_option(String::from("There must be an input"), self),
+					(Some(out), None) => {
+						self.outputs.remove(&out.borrow().get_id());
+						println!("Removed output for gate {}!", out.borrow().get_id());
+					}
+					(Some(out), Some(input)) =>
+					match position.as_str() {
+						"left" => self.remove_from_gate_to_left(out, Some(input)),
+						"right" => self.remove_from_gate_to_right(out, Some(input)),
+						_=> error_option(position, self)
+					}
+				}
 			InputOptions::Input(id, mode, value) =>
 				match self.get_gate(id) {
 					Some(gate) =>
