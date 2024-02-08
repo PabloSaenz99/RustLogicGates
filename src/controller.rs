@@ -1,10 +1,10 @@
-use crate::{gates::GateTypes, input_utils::{error_option, read_terminal, InputOptions}, logic_gate_base::LogicGate};
+use crate::{gates::GateTypes, input_utils::{error_option, read_terminal, InputOptions}, logic_gate_base::{LogicGate, RcLogicGate}};
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 pub struct Controller {
-	outputs: HashMap<u128, Rc<RefCell<LogicGate>>>,
-	inputs: HashMap<u128, Rc<RefCell<LogicGate>>>,
-	all_gates: HashMap<u128, Rc<RefCell<LogicGate>>>
+	outputs: HashMap<u128, RcLogicGate>,
+	inputs: HashMap<u128, RcLogicGate>,
+	all_gates: HashMap<u128, RcLogicGate>
 }
 
 impl Controller {
@@ -42,20 +42,20 @@ impl Controller {
 		}
 	}
 
-	pub fn get_gate(&self, i: u128) -> Option<Rc<RefCell<LogicGate>>> {
+	pub fn get_gate(&self, i: u128) -> Option<RcLogicGate> {
 		self.all_gates.get(&i).cloned()
 	}
 
-	pub fn join_to_left_gate(&mut self, left: Rc<RefCell<LogicGate>>, to: Rc<RefCell<LogicGate>>) {
+	pub fn join_to_left_gate(&mut self, left: RcLogicGate, to: RcLogicGate) {
 		to.borrow_mut().set_left_input_connection(Some(left.clone()));
 		left.borrow_mut().add_output_connection(to.clone().borrow().get_id(), Some(to.clone()));
 	}
-	pub fn join_to_right_gate(&mut self, right: Rc<RefCell<LogicGate>>, to: Rc<RefCell<LogicGate>>) {
+	pub fn join_to_right_gate(&mut self, right: RcLogicGate, to: RcLogicGate) {
 		to.borrow_mut().set_left_input_connection(Some(right.clone()));
 		right.borrow_mut().add_output_connection(to.clone().borrow().get_id(),Some(to.clone()));
 	}
 
-	pub fn remove_from_gate_to_left(&mut self, from: Rc<RefCell<LogicGate>>, to: Option<Rc<RefCell<LogicGate>>>) {
+	pub fn remove_from_gate_to_left(&mut self, from: RcLogicGate, to: Option<RcLogicGate>) {
 		from.borrow_mut().remove_output_connection(&to);
 		if to.is_some() {
 			let t = to.clone().unwrap();
@@ -66,7 +66,7 @@ impl Controller {
 			}
 		}
 	}
-	pub fn remove_from_gate_to_right(&mut self, from: Rc<RefCell<LogicGate>>, to: Option<Rc<RefCell<LogicGate>>>) {
+	pub fn remove_from_gate_to_right(&mut self, from: RcLogicGate, to: Option<RcLogicGate>) {
 		from.borrow_mut().remove_output_connection(&to);
 		if to.is_some() {
 			let t = to.clone().unwrap();
@@ -84,7 +84,7 @@ impl Controller {
 		}
 	}
 
-	pub fn print_gate(&self, gate: Option<Rc<RefCell<LogicGate>>>) {
+	pub fn print_gate(&self, gate: Option<RcLogicGate>) {
 		match gate {
 			Some(g) => {
 				for s in g.borrow().get_string() {
@@ -111,7 +111,7 @@ impl Controller {
 		}
 	}
 
-	fn print_recursive(&self, gate: Rc<RefCell<LogicGate>>, vertical: &mut Vec<HashMap<u128, [String; 5]>>, height: usize) {
+	fn print_recursive(&self, gate: RcLogicGate, vertical: &mut Vec<HashMap<u128, [String; 5]>>, height: usize) {
 		if height >= vertical.len() {
 			vertical.push(HashMap::new());
 		}
@@ -146,20 +146,20 @@ impl Controller {
 				}
 			InputOptions::Link(opt, input_gate, output_gate) =>
 				match (self.get_gate(input_gate), self.get_gate(output_gate)) {
-					(None, None) => error_option(String::from("Input and output not valid!"), self),
-					(None, Some(_)) => error_option(input_gate.to_string(), self),
-					(Some(_), None) => error_option(output_gate.to_string(), self),
+					(None, None) => error_option("Input and output not valid!", self),
+					(None, Some(_)) => error_option(input_gate.to_string().as_str(), self),
+					(Some(_), None) => error_option(output_gate.to_string().as_str(), self),
 					(Some(i), Some(o)) =>
 						match opt.as_str() {
 							"left" => self.join_to_left_gate(i, o),
 							"right" => self.join_to_right_gate(i, o),
-							_=> error_option(opt, self)
+							_=> error_option(&opt, self)
 						},
 				},
 			InputOptions::Unlink(position, from, to) =>
 				match (self.get_gate(from), self.get_gate(to)) {
-					(None, None) => error_option(String::from("There must be an input"), self),
-					(None, Some(_)) => error_option(String::from("There must be an input"), self),
+					(None, None) => error_option("There must be an input", self),
+					(None, Some(_)) => error_option("There must be an input", self),
 					(Some(out), None) => {
 						self.outputs.remove(&out.borrow().get_id());
 						println!("Removed output for gate {}!", out.borrow().get_id());
@@ -168,7 +168,7 @@ impl Controller {
 					match position.as_str() {
 						"left" => self.remove_from_gate_to_left(out, Some(input)),
 						"right" => self.remove_from_gate_to_right(out, Some(input)),
-						_=> error_option(position, self)
+						_=> error_option(&position, self)
 					}
 				}
 			InputOptions::Input(id, mode, value) =>
@@ -177,11 +177,11 @@ impl Controller {
 						match mode.as_str() {
 							"left" => gate.borrow_mut().set_left_input(value),
 							"right" => gate.borrow_mut().set_right_input(value),
-							_ => error_option(String::from("must be left or right"), self)
+							_ => error_option("must be left or right", self)
 						}
-					None => error_option("id".to_string(), self),
+					None => error_option("id", self),
 				},
-			InputOptions::Error => error_option(input, self),
+			InputOptions::Error => error_option(&input, self),
 		};
 		println!();
 	}

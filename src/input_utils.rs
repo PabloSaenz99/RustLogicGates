@@ -77,7 +77,7 @@ impl From<String> for InputOptions {
     }
 }
 
-pub fn error_option(input: String, ctrl: &mut Controller) {
+pub fn error_option(input: &str, ctrl: &mut Controller) {
     println!("----------------------------------------------------");
     println!("Error, option {} not valid", input);
     show_options();
